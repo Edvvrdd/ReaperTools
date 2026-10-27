@@ -1,0 +1,112 @@
+# QikWhoosh
+
+A granular sound design tool built directly into REAPER. Unlike traditional sealed instruments or rigid sample libraries, QikWhoosh turns your entire session into the granular engine. It features a uniquely flexible workflow where every processing stage is fully editable on the timeline — you can tweak volume, pan, pitch, and filter envelopes post-generation, and even recursively re-granulate your output with a single click.
+
+
+## Requirements
+
+- REAPER 6.x or newer
+- [ReaImGui](https://github.com/cfillion/reaimgui) (install via ReaPack)
+- ReaPitch (ships with REAPER; make sure Cockos plugins are enabled in Preferences → Plug-ins → VST)
+
+## Install via ReaPack
+
+1. Install [ReaPack](https://reapack.com) if you haven't already
+2. In REAPER: **Extensions → ReaPack → Manage repositories**
+3. Click **Import/export → Import repositories**
+4. Paste this URL: [https://raw.githubusercontent.com/Edvvrdd/GrainWhoosh/main/index.xml](https://raw.githubusercontent.com/Edvvrdd/GrainWhoosh/main/index.xml)
+5. **Extensions → ReaPack → Synchronize packages**
+6. Run `Script: QikWhoosh.lua` from the Actions list
+
+## Workflow
+
+1. Create a folder track; add audio items to child tracks beneath it
+2. Select the folder track in REAPER
+3. Make a time selection spanning the desired whoosh length
+4. Click **Generate Stereo** or **Generate Mono**
+5. A temp track (default `GW_Temp`) appears at the top of the project with the glued whoosh plus editable volume, pan, pitch, and filter envelopes
+6. Drag envelope points, add FX to the temp track, audition in place
+7. Click **Resample to Folder** to move the result into the folder as a new child source, or click **Render** to bounce through the full signal chain to a new track
+
+## Buttons
+
+| Button | Action |
+|---|---|
+| **Generate Stereo** | Fresh whoosh with a new random seed, stereo output |
+| **Generate Mono** | Same but mono; pan envelope is written flat |
+| **Render** | Bounce the temp track through its full signal chain (including ReaPitch, ReaEQ) to a new track below it |
+| **Resample to Folder** | Move the glued item from the temp track into the source folder as a new child track — enables recursive granulation without leaving the folder ecosystem |
+
+## Controls
+
+### Source / Sampling section
+
+- **Sampling Mode** — `Uniform` (classic granular: grains cycle through all sources with random offsets) or `Sequential` (each source gets one grain in order, auto-sized to fill the time selection)
+- **Grain Size** — duration of each slice in Uniform mode (10–500 ms); ignored in Sequential mode where grain size is auto-calculated
+- **Grain Density** — how densely grains overlap; higher values = thicker texture (maps to 15–75% grain overlap; the 15% floor guarantees crossfades at every grain join, preventing clicks)
+- Per-grain **Pitch** (±0–20%, via playback rate — grains extend/shrink to preserve the source slice) and **Volume** (±0–15%) randomization, set in the Options popup; Uniform mode only
+- **Sampling Direction** — how sources are ordered: Forward, Reverse, Ping-Pong, or Random
+- **Inset** — shrinks the grain placement window inside the time selection, giving silent margins at each end
+
+A live preview shows the exact bezier curve that will be written to the temp track's volume envelope.
+
+- **Peak Position** — where in the whoosh the loudest moment sits (0 = start, 1 = end)
+- **Hold Time** — fraction of the duration the peak is sustained (0–0.5); creates a flat plateau at maximum
+- **Rise Tension** — curvature of the attack; positive bows upward (fast rush-in), negative concaves (slow building tension)
+- **Fall Tension** — same for the release side
+- **Min Volume Floor** — set in Options (−60 dB to −20 dB). Controls the volume floor at envelope edges. −60 ≈ total silence, −20 dB leaves audible texture. Default: −30 dB.
+
+### Doppler section
+
+Toggles pitch, filter, and pan envelopes that simulate a moving sound source. All three share the same attack/release curvature from the Volume Envelope section but have independent peak positions.
+
+**Pitch**
+- **Intensity** — signed slider (0–±12 semitones). Positive = up-then-down (approach), negative = down-then-up (recede), zero = disabled
+- **Mode** — selectable in Options: **Shift Full** (±24 st range), **Shift Semitones** (±12 st), **Shift Cents** (±100 cent range for subtle shifts), **Formant Full** (formant-preserving shift at ±24 st range)
+
+**Filter**
+- **Intensity** — depth of the high-pass sweep (0–100%), via the green knob on the right edge of the visualizer. The high-pass starts thin at the edges of the whoosh (up to 2 kHz at full intensity) and opens fully at the peak, letting the low end through as the source "arrives". 0% bypasses the filter.
+
+**Pan**
+- **Strength / Direction** — signed slider: center = no sweep, negative = L→R sweep, positive = R→L sweep. Magnitude controls offset strength
+
+### Output / Generation section
+
+- **Inset** — shrinks the grain placement window inside the time selection. allowing for longer sampling duration but generating a quicker sounding whoosh
+- **Track Name** — name of the temp track; auto-appends `_1`, `_2`, etc. if a track with that name already exists
+- **Status** — live feedback on generation progress and errors
+
+## Preview Visualizer
+
+The live preview at the bottom of the window shows:
+
+- **Volume envelope** (cyan) — the bezier curve that will be written to the temp track
+- **Pitch envelope** (magenta) — ReaPitch automation curve (visible when Doppler is enabled)
+- **Filter envelope** (green) — ReaEQ high-pass automation line (visible when filter intensity is above 0)
+- **Grain background** — in Uniform mode, a dense texture of vertical lines; in Sequential mode, numbered blocks with neon borders showing source order
+
+## Recursive granulation
+
+The output of one whoosh can become the source for the next. Use **Resample to Folder** to move the glued item into the source folder as a new child track, select the folder, make a new time selection, and hit Generate again. Stack as many layers as you like — a whoosh-of-whooshes-of-whooshes takes about 30 seconds.
+
+## Known limitations
+
+- Source files must still exist at their original paths; grains skip sources that have been moved or deleted since the last session
+- ReaPack auto-update requires syncing manually; REAPER doesn't push updates automatically
+- Sequential mode supports up to 10 source tracks
+
+## Credits
+
+Heavily inspired by [ReaWhoosh](https://reaper.blog/2026/02/reawhoosh-generator-reaper-script/) by SBP — studying that script's envelope-handling patterns was essential to getting QikWhoosh's timeline integration working reliably.
+
+Design sensibility informed by [Tonsturm Whoosh](https://tonsturm.com/product/whoosh).
+
+Thanks to the REAPER scripting community and the maintainers of [ReaImGui](https://github.com/cfillion/reaimgui).
+
+## License
+
+MIT
+
+## Feedback
+
+Issues and feature requests welcome on the [GitHub issues page](https://github.com/Edvvrdd/GrainWhoosh/issues). Particularly interested in hearing about source-material combinations that produce unexpected results — the tool was designed for emergent texture and the failure modes are often more interesting than the successes.
