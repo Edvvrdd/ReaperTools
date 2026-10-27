@@ -1,4 +1,25 @@
--- CurveGenerator.lua
+-- @description CurveGenerator
+-- @author Ed
+-- @version 1.0
+-- @provides [main] .
+-- @about
+--   # CurveGenerator — Haptic Curve Generator
+--
+--   Turns a REAPER audio item into a haptic feedback curve and exports
+--   it for Unreal (Time,Value CSV), Unity (AnimationCurve JSON) or
+--   Godot 4 (Curve .tres).
+--
+--   UI: curve preview, drag points to edit, right-click to add/delete,
+--   Export button.
+--   Controls: left-drag = move point | right-click point = delete |
+--   right-click empty = add | Esc = close
+--   Sliders: resolution (samples/sec) and total curve duration (time-stretch)
+--
+--   Requires ReaImGui (install via ReaPack).
+-- @changelog
+--   v1.0
+--   - Initial release
+
 -- Turns a REAPER audio item into a haptic feedback curve and exports it for:
 --   Unreal (Time,Value CSV) / Unity (AnimationCurve JSON) / Godot 4 (Curve .tres)
 -- UI: curve preview, drag points to edit, right-click to add/delete, Export button.
