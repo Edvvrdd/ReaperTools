@@ -1,0 +1,66 @@
+desc:MB Rig Visualizer (band meters + output scope)
+//tags: analyzer visualizer multiband sound design
+//author: ReaperTools
+
+in_pin:Left Input
+in_pin:Right Input
+out_pin:Left Output
+out_pin:Right Output
+
+// Place on the [MB Rig] parent folder. Audio passes through untouched.
+// Top: scrolling peak scope of the summed band output.
+// Bottom: one bar per band (navy = LOW, amber = MID, cyan = HIGH), fed via
+// shared gmem by the MB_Filter_Band.jsfx instances on the band tracks
+// (gmem[4096 + mode]). Bands without a running filter show as decayed-out.
+
+@init
+sc_pos = 0; sc_pk = 0; sc_cnt = 0; // scope ring-buffer state
+// disp[3] band-bar display decay, auto-zeroed
+
+@sample
+// passthrough: spl read-only, never written
+sc_pk = max(sc_pk, max(abs(spl0), abs(spl1)));
+sc_cnt += 1;
+sc_cnt >= 256 ? (
+  buf[sc_pos] = sc_pk;
+  sc_pos = (sc_pos + 1) % 256;
+  sc_pk = 0; sc_cnt = 0;
+);
+
+@gfx
+gfx_set(0.08, 0.09, 0.12, 1);
+gfx_rect(0, 0, gfx_w, gfx_h, 1);
+
+// -- summed-output scope -------------------------------------------------
+mid = gfx_h * 0.34;
+gfx_set(0.75, 0.82, 0.9, 0.9);
+i = 0;
+loop(256,
+  v = buf[(sc_pos + i) % 256];
+  x = (i / 256) * gfx_w;
+  gfx_line(x, mid - v * mid, x, mid + v * mid);
+  i += 1;
+);
+
+// -- band bars ------------------------------------------------------------
+bar_y = gfx_h * 0.62;
+bar_h = min(16, (gfx_h - bar_y - 8) / 3 - 4);
+lbl_w = 52;
+i = 0;
+loop(3,
+  v = max(gmem[4096 + i], disp[i] * 0.92); // peak-hold with decay
+  disp[i] = v;
+  db = 20 * log10(max(v, 0.00001));
+  frac = (db + 60) / 60;
+  frac < 0 ? frac = 0;
+  y = bar_y + i * (bar_h + 4);
+  i == 0 ? gfx_set(0.10, 0.18, 0.35, 1)   // LOW  navy
+  : i == 1 ? gfx_set(0.90, 0.63, 0.16, 1) // MID  amber
+  : gfx_set(0.24, 0.86, 0.94, 1);         // HIGH cyan
+  gfx_rect(0, y, frac * (gfx_w - lbl_w), bar_h, 1);
+  gfx_set(0.85, 0.88, 0.92, 0.9);
+  gfx_x = gfx_w - lbl_w + 6;
+  gfx_y = y;
+  gfx_drawnumber(db, 1);
+  i += 1;
+);

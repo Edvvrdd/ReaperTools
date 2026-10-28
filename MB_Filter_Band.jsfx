@@ -64,6 +64,8 @@ c1  = 0;  // filter A coefficients [b0 b1 b2 a1 a2]
 c2  = 8;  // filter B coefficients
 st1 = 16; // filter A state: [ch*8 + stage*4] -> [x1 x2 y1 y2]
 st2 = 32; // filter B state
+gsum = 0; // band-meter accumulator
+gcnt = 0;
 coeffs(); // re-run here: @slider does not fire on sample-rate changes
 
 @slider
@@ -81,4 +83,13 @@ slider1 == 0 ? ( // Low Band: LR4 low-pass @ f1
   spl1 = bq2(c1, st1 + 8, spl1);
   spl0 = bq2(c2, st2, spl0);
   spl1 = bq2(c2, st2 + 8, spl1);
+);
+
+// band energy meter -> shared gmem[4096 + mode], read by MB_Visualizer.jsfx
+// ponytail: fixed gmem slot 4096..4098; move if it ever collides
+gsum += spl0*spl0 + spl1*spl1;
+gcnt += 1;
+gcnt >= 1024 ? (
+  gmem[4096 + slider1] = sqrt(gsum * 0.00048828125); // rms over both ch, 1024 samples
+  gsum = 0; gcnt = 0;
 );
