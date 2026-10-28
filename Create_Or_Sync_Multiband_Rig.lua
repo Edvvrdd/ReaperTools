@@ -1,6 +1,6 @@
 -- @description Create_Or_Sync_Multiband_Rig
 -- @author Ed
--- @version 1.1
+-- @version 1.1.1
 -- @provides [main] .
 -- @about
 --   # Multiband Splitting Rig — LR4 band-split folder (Multipass-style)
@@ -19,6 +19,9 @@
 --   Note: the bucket design duplicates items — live/incoming input should be
 --   recorded to the band tracks directly.
 -- @changelog
+--   v1.1.1
+--   - Fixed crossover sync: FX lookup now matches both the JSFX path and
+--     description name forms (v1.1 sliders appeared to do nothing)
 --   v1.1
 --   - Bucket redesign: no [SOURCE IN]; items are cloned into each band child
 --   - ReaImGui control window with live crossover sliders (persistent values)
@@ -272,9 +275,12 @@ local function find_track_by_guid(guid)
 end
 
 local function find_fx(tr, needle)
+  -- match path ("...MB_Filter_Band") and desc ("MB Filter Band (...)") forms:
+  -- strip all non-alphanumerics from both before comparing
+  local want = needle:lower():gsub("[^%w]", "")
   for i = 0, r.TrackFX_GetCount(tr) - 1 do
     local _, name = r.TrackFX_GetFXName(tr, i, "")
-    if name:lower():find(needle, 1, true) then return i end
+    if name:lower():gsub("[^%w]", ""):find(want, 1, true) then return i end
   end
   return -1
 end
@@ -424,7 +430,7 @@ local function apply_crossovers(commit)
   for _, b in ipairs(BANDS) do
     local tr = find_track_by_guid(get_ext(parent, b.key))
     if tr then
-      local fx = find_fx(tr, "mb_filter_band")
+      local fx = find_fx(tr, "MB_Filter_Band")
       if fx >= 0 then
         if b.u1 then set_slider(tr, fx, 1, f1, S2_MIN, S2_MAX) end
         if b.u2 then set_slider(tr, fx, 2, f2, S3_MIN, S3_MAX) end
