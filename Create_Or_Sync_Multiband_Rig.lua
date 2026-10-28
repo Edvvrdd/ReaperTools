@@ -1,6 +1,6 @@
 -- @description Create_Or_Sync_Multiband_Rig
 -- @author Ed
--- @version 1.1.1
+-- @version 1.2.0
 -- @provides [main] .
 -- @about
 --   # Multiband Splitting Rig — LR4 band-split folder (Multipass-style)
@@ -19,6 +19,11 @@
 --   Note: the bucket design duplicates items — live/incoming input should be
 --   recorded to the band tracks directly.
 -- @changelog
+--   v1.2.0
+--   - Control window now uses an explicit Apply button instead of live
+--     auto-update; Apply reports how many band filters it touched
+--   - Band tracks located by walking the rig folder (filters set by mode),
+--     no longer dependent on stored GUIDs
 --   v1.1.1
 --   - Fixed crossover sync: FX lookup now matches both the JSFX path and
 --     description name forms (v1.1 sliders appeared to do nothing)
@@ -43,9 +48,6 @@ local VISUAL_FILE  = "MB_Visualizer.jsfx"
 
 -- P_EXT keys stored on the rig parent track
 local EXT_PARENT = "P_EXT:MB_RIG_PARENT"
-local EXT_LOW    = "P_EXT:MB_RIG_LOW"
-local EXT_MID    = "P_EXT:MB_RIG_MID"
-local EXT_HIGH   = "P_EXT:MB_RIG_HIGH"
 local EXT_F1     = "P_EXT:MB_RIG_F1"
 local EXT_F2     = "P_EXT:MB_RIG_F2"
 
@@ -54,11 +56,11 @@ local S2_MIN, S2_MAX = 20, 2000
 local S3_MIN, S3_MAX = 1000, 20000
 
 local BANDS = {
-  { key = EXT_LOW,  name = "[LOW]",  mode = 0, u1 = true,  u2 = false,
+  { name = "[LOW]",  mode = 0, u1 = true,  u2 = false,
     rgb = { 25, 45, 90 },   ui = 0x192D5AFF }, -- deep navy
-  { key = EXT_MID,  name = "[MID]",  mode = 1, u1 = true,  u2 = true,
+  { name = "[MID]",  mode = 1, u1 = true,  u2 = true,
     rgb = { 230, 160, 40 }, ui = 0xE6A028FF }, -- amber
-  { key = EXT_HIGH, name = "[HIGH]", mode = 2, u1 = false, u2 = true,
+  { name = "[HIGH]", mode = 2, u1 = false, u2 = true,
     rgb = { 60, 220, 240 }, ui = 0x3CDCF0FF }, -- bright cyan
 }
 
@@ -266,14 +268,6 @@ local function set_ext(tr, key, val)
   r.GetSetMediaTrackInfo_String(tr, key, val, true)
 end
 
-local function find_track_by_guid(guid)
-  if not guid or guid == "" then return nil end
-  for i = 0, r.CountTracks(0) - 1 do
-    local tr = r.GetTrack(0, i)
-    if r.GetTrackGUID(tr) == guid then return tr end
-  end
-end
-
 local function find_fx(tr, needle)
   -- match path ("...MB_Filter_Band") and desc ("MB Filter Band (...)") forms:
   -- strip all non-alphanumerics from both before comparing
@@ -358,7 +352,7 @@ local function create_rig(src)
     items[#items + 1] = r.GetTrackMediaItem(src, i)
   end
 
-  local bandTr, midi_left = {}, 0
+  local midi_left = 0
   for i, b in ipairs(BANDS) do
     r.InsertTrackAtIndex(idx + i, false)
     local tr = r.GetTrack(0, idx + i)
@@ -366,7 +360,6 @@ local function create_rig(src)
     r.SetMediaTrackInfo_Value(tr, "I_FOLDERDEPTH", i == #BANDS and -1 or 0)
     r.SetMediaTrackInfo_Value(tr, "I_CUSTOMCOLOR",
       r.ColorToNative(b.rgb[1], b.rgb[2], b.rgb[3]) | 0x1000000)
-    bandTr[i] = tr
 
     -- bucket: clone every item into this band
     for _, it in ipairs(items) do
@@ -401,9 +394,6 @@ local function create_rig(src)
 
   -- persist rig state on the parent
   set_ext(src, EXT_PARENT, "1")
-  set_ext(src, EXT_LOW,  r.GetTrackGUID(bandTr[1]))
-  set_ext(src, EXT_MID,  r.GetTrackGUID(bandTr[2]))
-  set_ext(src, EXT_HIGH, r.GetTrackGUID(bandTr[3]))
   set_ext(src, EXT_F1, "250.00")
   set_ext(src, EXT_F2, "3500.00")
 
@@ -425,22 +415,37 @@ end
 
 local parent      -- rig parent track (GUI target)
 local f1, f2 = 250, 3500
+local last_applied -- status count from the last Apply click
 
-local function apply_crossovers(commit)
-  for _, b in ipairs(BANDS) do
-    local tr = find_track_by_guid(get_ext(parent, b.key))
-    if tr then
-      local fx = find_fx(tr, "MB_Filter_Band")
-      if fx >= 0 then
-        if b.u1 then set_slider(tr, fx, 1, f1, S2_MIN, S2_MAX) end
-        if b.u2 then set_slider(tr, fx, 2, f2, S3_MIN, S3_MAX) end
-      end
+-- direct children of the rig folder (walk until the folder closes)
+local function rig_children(par)
+  local pidx = math.floor(r.GetMediaTrackInfo_Value(par, "IP_TRACKNUMBER")) - 1
+  local kids, depth = {}, 0
+  for i = pidx + 1, r.CountTracks(0) - 1 do
+    local tr = r.GetTrack(0, i)
+    kids[#kids + 1] = tr
+    depth = depth + r.GetMediaTrackInfo_Value(tr, "I_FOLDERDEPTH")
+    if depth <= 0 then break end
+  end
+  return kids
+end
+
+-- push f1/f2 to every band filter found under the rig folder; the filter's
+-- mode (slider1) decides which cutoff it gets, so track names/GUIDs don't matter
+local function apply_crossovers()
+  local applied = 0
+  for _, tr in ipairs(rig_children(parent)) do
+    local fx = find_fx(tr, "MB_Filter_Band")
+    if fx >= 0 then
+      local mode = math.floor(r.TrackFX_GetParam(tr, fx, 0) * 2 + 0.5)
+      if mode == 0 or mode == 1 then set_slider(tr, fx, 1, f1, S2_MIN, S2_MAX) end
+      if mode == 1 or mode == 2 then set_slider(tr, fx, 2, f2, S3_MIN, S3_MAX) end
+      applied = applied + 1
     end
   end
-  if commit then
-    set_ext(parent, EXT_F1, string.format("%.2f", f1))
-    set_ext(parent, EXT_F2, string.format("%.2f", f2))
-  end
+  set_ext(parent, EXT_F1, string.format("%.2f", f1))
+  set_ext(parent, EXT_F2, string.format("%.2f", f2))
+  return applied
 end
 
 -- ---------------------------------------------------------------------------
@@ -481,8 +486,9 @@ end
 local started, hidden_frames = false, 0
 
 local function crossover_slider(label, val, vmin, vmax, is_f1)
-  local changed, nv = r.ImGui_SliderDouble(ctx, label, val, vmin, vmax, "%.0f Hz")
-  if changed then
+  -- sliders only stage values locally; the Apply button pushes to the filters
+  local _, nv = r.ImGui_SliderDouble(ctx, label, val, vmin, vmax, "%.0f Hz")
+  if nv ~= val then
     if is_f1 then
       f1 = nv
       if f2 <= f1 then f2 = math.min(S3_MAX, f1 + 1) end
@@ -490,12 +496,6 @@ local function crossover_slider(label, val, vmin, vmax, is_f1)
       f2 = nv
       if f2 <= f1 then f1 = math.max(S2_MIN, f2 - 1) end
     end
-    apply_crossovers(false) -- live while dragging
-  end
-  if r.ImGui_IsItemDeactivatedAfterEdit(ctx) then
-    r.Undo_BeginBlock2(0)
-    apply_crossovers(true)  -- persist to P_EXT on release
-    r.Undo_EndBlock2(0, "MB rig crossovers", -1)
   end
 end
 
@@ -522,7 +522,16 @@ local function loop()
     crossover_slider("Mid/High Crossover", f2, S3_MIN, S3_MAX, false)
 
     r.ImGui_Spacing(ctx)
-    r.ImGui_TextDisabled(ctx, "Filters update live while dragging.")
+    if r.ImGui_Button(ctx, "Apply to Band Filters", -1, 0) then
+      r.Undo_BeginBlock2(0)
+      last_applied = apply_crossovers()
+      r.Undo_EndBlock2(0, "MB rig crossovers", -1)
+    end
+    if last_applied then
+      r.ImGui_TextDisabled(ctx, last_applied > 0
+        and ("Applied to " .. last_applied .. " band filter(s).")
+        or "No MB_Filter_Band FX found on the rig's band tracks.")
+    end
     r.ImGui_TextDisabled(ctx, "Values persist on the rig parent track.")
     r.ImGui_End(ctx)
   end
