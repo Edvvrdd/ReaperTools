@@ -26,8 +26,8 @@
         <description>Turns the selected track into a multiband host folder: items are cloned into color-coded [LOW]/[MID]/[HIGH] bucket children split by phase-coherent Linkwitz-Riley 4th-order (24 dB/oct) JSFX filters, summing flat into the parent (which keeps your FX chain plus an output visualizer). Re-run on the rig to open a control window with live crossover sliders. Values persist on the parent track.</description>
         <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
       </metadata>
-      <version name="1.2.0" author="Ed" time="2026-10-28T01:25:00Z">
-        <changelog><![CDATA[Control window: explicit Apply button pushes crossovers to all band filters (reports count); band tracks found by walking the rig folder, no GUID dependency.]]></changelog>
+      <version name="1.2.1" author="Ed" time="2026-10-28T01:50:00Z">
+        <changelog><![CDATA[CRITICAL FIX: TrackFX_SetParam takes native values (Hz), not normalized 0..1 — all cutoff writes were clamping to the slider minimums and band modes were mis-set. Apply now sends Hz directly; existing rigs should re-Apply or be recreated.]]></changelog>
         <source main="main">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/Create_Or_Sync_Multiband_Rig.lua</source>
       </version>
     </reapack>

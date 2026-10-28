@@ -1,6 +1,6 @@
 -- @description Create_Or_Sync_Multiband_Rig
 -- @author Ed
--- @version 1.2.0
+-- @version 1.2.1
 -- @provides [main] .
 -- @about
 --   # Multiband Splitting Rig — LR4 band-split folder (Multipass-style)
@@ -19,6 +19,10 @@
 --   Note: the bucket design duplicates items — live/incoming input should be
 --   recorded to the band tracks directly.
 -- @changelog
+--   v1.2.1
+--   - CRITICAL FIX: TrackFX_SetParam takes native values, not normalized 0..1
+--     (all cutoff writes were clamping to the slider minimums; band modes were
+--     mis-set too). Apply now sends Hz directly and reads modes range-safely.
 --   v1.2.0
 --   - Control window now uses an explicit Apply button instead of live
 --     auto-update; Apply reports how many band filters it touched
@@ -279,11 +283,10 @@ local function find_fx(tr, needle)
   return -1
 end
 
--- hz -> normalized FX param for slider2/slider3
-local function set_slider(tr, fx, idx, hz, vmin, vmax)
-  local n = (hz - vmin) / (vmax - vmin)
-  if n < 0 then n = 0 elseif n > 1 then n = 1 end
-  r.TrackFX_SetParam(tr, fx, idx, n)
+-- TrackFX_SetParam takes the parameter's NATIVE value (Hz for slider2/3),
+-- NOT a normalized 0..1 — that's TrackFX_SetParamNormalized.
+local function set_slider(tr, fx, idx, hz)
+  r.TrackFX_SetParam(tr, fx, idx, hz)
 end
 
 -- ---------------------------------------------------------------------------
@@ -373,9 +376,9 @@ local function create_rig(src)
       msg("Failed to insert MB_Filter_Band.jsfx on " .. b.name ..
           " (if the file was just written, restart REAPER and run again).")
     else
-      r.TrackFX_SetParam(tr, fx, 0, b.mode / 2)   -- slider1: mode, normalized
-      if b.u1 then set_slider(tr, fx, 1, 250, S2_MIN, S2_MAX) end
-      if b.u2 then set_slider(tr, fx, 2, 3500, S3_MIN, S3_MAX) end
+      r.TrackFX_SetParam(tr, fx, 0, b.mode) -- slider1: mode (native 0/1/2)
+      if b.u1 then set_slider(tr, fx, 1, 250) end
+      if b.u2 then set_slider(tr, fx, 2, 3500) end
     end
   end
 
@@ -437,9 +440,11 @@ local function apply_crossovers()
   for _, tr in ipairs(rig_children(parent)) do
     local fx = find_fx(tr, "MB_Filter_Band")
     if fx >= 0 then
-      local mode = math.floor(r.TrackFX_GetParam(tr, fx, 0) * 2 + 0.5)
-      if mode == 0 or mode == 1 then set_slider(tr, fx, 1, f1, S2_MIN, S2_MAX) end
-      if mode == 1 or mode == 2 then set_slider(tr, fx, 2, f2, S3_MIN, S3_MAX) end
+      -- read mode range-safely: works whether GetParam returns native or normalized
+      local val, mn, mx = r.TrackFX_GetParam(tr, fx, 0)
+      local mode = math.floor((val - mn) / (mx - mn) * 2 + 0.5)
+      if mode == 0 or mode == 1 then set_slider(tr, fx, 1, f1) end
+      if mode == 1 or mode == 2 then set_slider(tr, fx, 2, f2) end
       applied = applied + 1
     end
   end
