@@ -21,5 +21,25 @@
         <source main="main">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/CurveGenerator.lua</source>
       </version>
     </reapack>
+    <reapack name="Create_Or_Sync_Multiband_Rig.lua" type="script" desc="Multiband splitting rig — LR4 band-split folder (Multipass-style)">
+      <metadata>
+        <description>Turns the selected track into a multiband host folder with [LOW]/[MID]/[HIGH] band children split by phase-coherent Linkwitz-Riley 4th-order (24 dB/oct) JSFX filters. Re-run on the rig to sync/update both crossover cutoffs across all bands. Self-deploys its JSFX if missing.</description>
+        <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
+      </metadata>
+      <version name="1.0.0" author="Ed" time="2026-10-28T00:30:08Z">
+        <changelog><![CDATA[Initial release]]></changelog>
+        <source main="main">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/Create_Or_Sync_Multiband_Rig.lua</source>
+      </version>
+    </reapack>
+    <reapack name="MB_Filter_Band.jsfx" type="effect" desc="MB Filter Band — LR4 24 dB/oct band-split filter (LP/BP/HP)">
+      <metadata>
+        <description>Per-track Linkwitz-Riley 4th-order (24 dB/oct) band filter for multiband splitting: Low (LP), Mid (BP) or High (HP) mode with two crossover sliders. Installs to Effects/SoundDesignTools/ for the Create_Or_Sync_Multiband_Rig.lua script.</description>
+        <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
+      </metadata>
+      <version name="1.0.0" author="Ed" time="2026-10-28T00:30:08Z">
+        <changelog><![CDATA[Initial release]]></changelog>
+        <source main="main" file="SoundDesignTools/MB_Filter_Band.jsfx">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/MB_Filter_Band.jsfx</source>
+      </version>
+    </reapack>
   </category>
 </index>

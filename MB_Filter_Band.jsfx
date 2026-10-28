@@ -1,0 +1,84 @@
+desc:MB Filter Band (LR4 24 dB/oct Band Splitter)
+//tags: filter multiband crossover sound design band-split
+//author: ReaperTools
+
+slider1:0<0,2,1{Low Band (LP),Mid Band (BP),High Band (HP)}>Band Mode
+slider2:250<20,2000,1>Low/Mid Crossover (Hz)
+slider3:3500<1000,20000,1>Mid/High Crossover (Hz)
+
+in_pin:Left Input
+in_pin:Right Input
+out_pin:Left Output
+out_pin:Right Output
+
+// 4th-order Linkwitz-Riley (24 dB/oct) built from two cascaded 2nd-order
+// Butterworth sections (Q = 0.70710678). LR4 pairs are magnitude-complementary
+// and phase-coherent at the crossover (-6 dB each, 0 deg relative phase),
+// so adjacent bands sum flat. Put one instance per band track and set the
+// same cutoffs on neighboring bands for a flat-summing split.
+//
+// ponytail: coefficients jump on slider move (can zipper); add smoothing
+// only if it audibly matters in the rig.
+
+function bq_run(c, s, x) local(y) (
+  // transposed direct-form II biquad
+  // c = [b0 b1 b2 a1 a2] (a0-normalized), s = [x1 x2 y1 y2]
+  y = c[0]*x + c[1]*s[0] + c[2]*s[1] - c[3]*s[2] - c[4]*s[3];
+  s[1] = s[0]; s[0] = x;
+  s[3] = s[2]; s[2] = y;
+  y;
+);
+
+function bq2(c, s, x) (
+  // two cascaded biquad stages = 4th order
+  x = bq_run(c, s, x);
+  bq_run(c, s + 4, x);
+);
+
+function coeffs() local(f1, f2, w0, cw, sw, al, a0) (
+  f1 = slider2;
+  f2 = slider3;
+  f2 < f1 ? f2 = f1; // keep Mid band sane if f2 dragged below f1
+  // filter A @ f1: LP in Low mode, HP otherwise
+  w0 = 2*$pi*f1/srate; cw = cos(w0); sw = sin(w0);
+  al = sw*0.70710678; a0 = 1 + al; // alpha = sin/(2*Q), Q = 0.70710678
+  slider1 == 0 ? (
+    c1[0] = (1-cw)*0.5/a0; c1[1] = (1-cw)/a0; c1[2] = c1[0];
+  ) : (
+    c1[0] = (1+cw)*0.5/a0; c1[1] = -(1+cw)/a0; c1[2] = c1[0];
+  );
+  c1[3] = -2*cw/a0; c1[4] = (1-al)/a0;
+  // filter B @ f2: LP in Mid mode, HP otherwise
+  w0 = 2*$pi*f2/srate; cw = cos(w0); sw = sin(w0);
+  al = sw*0.70710678; a0 = 1 + al;
+  slider1 == 1 ? (
+    c2[0] = (1-cw)*0.5/a0; c2[1] = (1-cw)/a0; c2[2] = c2[0];
+  ) : (
+    c2[0] = (1+cw)*0.5/a0; c2[1] = -(1+cw)/a0; c2[2] = c2[0];
+  );
+  c2[3] = -2*cw/a0; c2[4] = (1-al)/a0;
+);
+
+@init
+c1  = 0;  // filter A coefficients [b0 b1 b2 a1 a2]
+c2  = 8;  // filter B coefficients
+st1 = 16; // filter A state: [ch*8 + stage*4] -> [x1 x2 y1 y2]
+st2 = 32; // filter B state
+coeffs(); // re-run here: @slider does not fire on sample-rate changes
+
+@slider
+coeffs();
+
+@sample
+slider1 == 0 ? ( // Low Band: LR4 low-pass @ f1
+  spl0 = bq2(c1, st1, spl0);
+  spl1 = bq2(c1, st1 + 8, spl1);
+) : slider1 == 2 ? ( // High Band: LR4 high-pass @ f2
+  spl0 = bq2(c2, st2, spl0);
+  spl1 = bq2(c2, st2 + 8, spl1);
+) : ( // Mid Band: LR4 high-pass @ f1 -> LR4 low-pass @ f2
+  spl0 = bq2(c1, st1, spl0);
+  spl1 = bq2(c1, st1 + 8, spl1);
+  spl0 = bq2(c2, st2, spl0);
+  spl1 = bq2(c2, st2 + 8, spl1);
+);
