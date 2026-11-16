@@ -1,6 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <index version="1" name="Edvvrdd Reaper tools for Game audio">
   <category name="Game Audio">
+    <reapack name="ReaBlender.lua" type="script" desc="ReaBlender — multiband LR4 rig + granular whoosh suite">
+      <metadata>
+        <description>Unified Sound/Dev/Ed sound design suite: one-button multiband rig (Sub/Low-Mid/High-Mid/Air buckets split by phase-coherent Linkwitz-Riley 4th-order filters) + granular whoosh engine with Auto-Whoosh and Live performance modes, interactive envelope curve editor, per-bucket ingredient management and stem rendering.</description>
+        <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
+      </metadata>
+      <version name="1.0.0" author="Ed" time="2026-11-16T00:00:00Z">
+        <changelog><![CDATA[Initial release: merges the multiband rig builder and the granular whoosh engine. Fixes the band-FX control bug: filters are located by robust filename+description matching with ValidatePtr2 guards and updated with native (Hz) parameter values while walking the rig folder structure.]]></changelog>
+        <source main="main">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/ReaBlender.lua</source>
+      </version>
+    </reapack>
+    <reapack name="ReaBlender_Filter.jsfx" type="effect" desc="ReaBlender Filter Band — LR4 24 dB/oct 4-way splitter (LP/BP/HP)">
+      <metadata>
+        <description>Per-bucket Linkwitz-Riley 4th-order (24 dB/oct) band filter with four modes (Sub LP, Low-Mid BP, High-Mid BP, Air HP) across three crossovers. Broadcasts band RMS levels over shared gmem for the ReaBlender Visualizer. Installs to Effects/SoundDesignTools/.</description>
+        <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
+      </metadata>
+      <version name="1.0.0" author="Ed" time="2026-11-16T00:00:00Z">
+        <changelog><![CDATA[Initial release]]></changelog>
+        <source main="main" file="SoundDesignTools/ReaBlender_Filter.jsfx">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/ReaBlender_Filter.jsfx</source>
+      </version>
+    </reapack>
+    <reapack name="ReaBlender_Brain.jsfx" type="effect" desc="ReaBlender Brain — live whoosh envelope + doppler engine">
+      <metadata>
+        <description>Master whoosh envelope and doppler pan engine for the [ReaBlender] parent track. Lua writes the envelope shape and playhead as native parameters; the Brain renders them sample-accurately and broadcasts playhead/gain/pan over shared gmem.</description>
+        <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
+      </metadata>
+      <version name="1.0.0" author="Ed" time="2026-11-16T00:00:00Z">
+        <changelog><![CDATA[Initial release]]></changelog>
+        <source main="main" file="SoundDesignTools/ReaBlender_Brain.jsfx">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/ReaBlender_Brain.jsfx</source>
+      </version>
+    </reapack>
+    <reapack name="ReaBlender_Visualizer.jsfx" type="effect" desc="ReaBlender Visualizer — band meters + scope + playhead">
+      <metadata>
+        <description>Passthrough JSFX for the [ReaBlender] parent: scrolling output scope, violet/navy/amber/cyan band level meters fed by ReaBlender_Filter over shared gmem, plus the Brain's live playhead cursor and envelope gain dot.</description>
+        <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
+      </metadata>
+      <version name="1.0.0" author="Ed" time="2026-11-16T00:00:00Z">
+        <changelog><![CDATA[Initial release]]></changelog>
+        <source main="main" file="SoundDesignTools/ReaBlender_Visualizer.jsfx">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/ReaBlender_Visualizer.jsfx</source>
+      </version>
+    </reapack>
     <reapack name="QikWhoosh.lua" type="script" desc="Granular whoosh generator for REAPER">
       <metadata>
         <description>Granular whoosh generator for REAPER</description>
@@ -21,9 +61,9 @@
         <source main="main">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/CurveGenerator.lua</source>
       </version>
     </reapack>
-    <reapack name="Create_Or_Sync_Multiband_Rig.lua" type="script" desc="Multiband splitting rig — LR4 band-split folder (Multipass-style)">
+    <reapack name="Create_Or_Sync_Multiband_Rig.lua" type="script" desc="[legacy] Multiband splitting rig — LR4 band-split folder (Multipass-style)">
       <metadata>
-        <description>Turns the selected track into a multiband host folder: items are cloned into color-coded [LOW]/[MID]/[HIGH] bucket children split by phase-coherent Linkwitz-Riley 4th-order (24 dB/oct) JSFX filters, summing flat into the parent (which keeps your FX chain plus an output visualizer). Re-run on the rig to open a control window with live crossover sliders. Values persist on the parent track.</description>
+        <description>Superseded by ReaBlender. Turns the selected track into a multiband host folder: items are cloned into color-coded [LOW]/[MID]/[HIGH] bucket children split by phase-coherent Linkwitz-Riley 4th-order (24 dB/oct) JSFX filters, summing flat into the parent (which keeps your FX chain plus an output visualizer). Re-run on the rig to open a control window with live crossover sliders. Values persist on the parent track.</description>
         <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
       </metadata>
       <version name="1.2.1" author="Ed" time="2026-10-28T01:50:00Z">

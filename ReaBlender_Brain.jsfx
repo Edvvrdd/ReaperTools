@@ -1,0 +1,76 @@
+desc:ReaBlender Brain (whoosh envelope + doppler engine)
+//tags: envelope doppler automation whoosh sound design reablender
+//author: ReaperTools
+
+slider1:0<0,1,0.001>Playhead (0-1)
+slider2:0.5<0,1,0.001>Peak Position
+slider3:0.08<0,0.5,0.001>Hold
+slider4:0.5<-1,1,0.01>Rise Tension
+slider5:0.5<-1,1,0.01>Fall Tension
+slider6:0<-24,0,0.1>Peak Level (dB)
+slider7:-60<-90,-12,0.1>Floor Level (dB)
+slider8:0.7<0,1,0.01>Doppler Depth
+slider9:1<0,1,0.01>Envelope Amount (0 = transparent)
+
+in_pin:Left Input
+in_pin:Right Input
+out_pin:Left Output
+out_pin:Right Output
+
+// ReaBlender live-performance engine. One instance on the [ReaBlender] parent,
+// FIRST in the FX chain (processes the summed bands). Audio passes through the
+// master whoosh envelope + doppler pan computed from the playhead slider:
+//
+//   gain(t) = dB(floor + (peak - floor) * shape(t))   shape = power curve
+//   pan(t)  = depth * clamp(2*(t - peak_pos), -1, 1)  (passes L -> R through peak)
+//
+// Envelope Amount (slider9) bypasses everything when 0: Auto-Whoosh grains
+// already carry the baked curve; Live mode sets it to 1.
+//
+// The ReaBlender.lua UI writes the shape sliders (2..8) when the curve changes
+// and drives the playhead (1) every frame, so Lua owns the curve and the Brain
+// renders it sample-accurate — no zipper, no per-sample Lua.
+//
+// gmem layout (shared with ReaBlender_Filter.jsfx / ReaBlender_Visualizer.jsfx):
+//   gmem[8192..8195]  : band RMS levels (filters write)
+//   gmem[8200]        : playhead 0..1
+//   gmem[8201]        : envelope gain (linear)
+//   gmem[8202]        : doppler pan -1..1
+//
+// ponytail: power-curve shape (exponent from tension) not cubic beziers —
+// one line in Lua AND EEL, same result; switch if curves ever need an S-bend.
+
+function env_shape(t) local(ps, pe, ea, er) (
+  // identical curve to ReaBlender.lua's env_shape()
+  ps = max(0, slider2 - slider3*0.5);
+  pe = min(1, slider2 + slider3*0.5);
+  ea = 2^(slider4*1.5);
+  er = 2^(slider5*1.5);
+  t <= ps ? ( ps > 0 ? pow(t/ps, ea) : 1 )
+  : t >= pe ? ( pe < 1 ? pow((1-t)/(1-pe), er) : 0 )
+  : 1;
+);
+
+@init
+g = 0;  p = 0; // smoothed gain / pan state
+
+@slider
+// nothing precomputed; env_shape() is evaluated per sample from sliders
+
+@sample
+t = slider1; // playhead 0..1
+shape = env_shape(t);
+amt = slider9;
+gain_db = amt < 0.001 ? 0 : (slider7 + (slider6 - slider7) * shape);
+tgt_g = 10^(gain_db * (1/20)); // dB -> linear
+tgt_p = amt * slider8 * min(1, max(-1, (t - slider2) * 2));
+g += (tgt_g - g) * 0.002; // ~10 ms one-pole, kills param-update zipper
+p += (tgt_p - p) * 0.002;
+
+// linear pan: p = +1 hard right, -1 hard left
+spl0 = spl0 * g * (1 - max(p, 0));
+spl1 = spl1 * g * (1 - max(-p, 0));
+
+gmem[8200] = t;
+gmem[8201] = g;
+gmem[8202] = p;

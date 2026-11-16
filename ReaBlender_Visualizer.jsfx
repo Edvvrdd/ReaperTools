@@ -1,0 +1,87 @@
+desc:ReaBlender Visualizer (band meters + output scope + playhead)
+//tags: analyzer visualizer multiband sound design reablender
+//author: ReaperTools
+
+in_pin:Left Input
+in_pin:Right Input
+out_pin:Left Output
+out_pin:Right Output
+
+// Place on the [ReaBlender] parent folder, LAST in the FX chain. Audio passes
+// through untouched. Reads shared gmem:
+//   gmem[8192..8195]  band RMS levels written by ReaBlender_Filter.jsfx
+//   gmem[8200..8202]  playhead / envelope gain / doppler pan from ReaBlender_Brain.jsfx
+//
+// Top: scrolling peak scope of the summed output.
+// Middle: band bars  [SUB] violet, [LOW-MID] navy, [HIGH-MID] amber, [AIR] cyan.
+// Bottom: live playhead cursor + envelope gain dot.
+
+@init
+sc_pos = 0; sc_pk = 0; sc_cnt = 0; // scope ring-buffer state
+// disp[3] band-bar display decay, auto-zeroed
+
+@sample
+// passthrough: spl read-only, never written
+sc_pk = max(sc_pk, max(abs(spl0), abs(spl1)));
+sc_cnt += 1;
+sc_cnt >= 256 ? (
+  buf[sc_pos] = sc_pk;
+  sc_pos = (sc_pos + 1) % 256;
+  sc_pk = 0; sc_cnt = 0;
+);
+
+@gfx
+gfx_set(0.08, 0.09, 0.12, 1);
+gfx_rect(0, 0, gfx_w, gfx_h, 1);
+
+// -- summed-output scope -------------------------------------------------
+scope_h = gfx_h * 0.42;
+gfx_set(0.75, 0.82, 0.9, 0.9);
+i = 0;
+loop(256,
+  v = buf[(sc_pos + i) % 256];
+  x = (i / 256) * gfx_w;
+  gfx_line(x, scope_h - v * scope_h, x, scope_h + v * scope_h);
+  i += 1;
+);
+
+// -- band bars ------------------------------------------------------------
+bar_y = gfx_h * 0.52;
+bar_h = min(14, (gfx_h - bar_y - 26) / 4 - 3);
+lbl_w = 52;
+i = 0;
+loop(4,
+  v = max(gmem[8192 + i], disp[i] * 0.92); // peak-hold with decay
+  disp[i] = v;
+  db = 20 * log10(max(v, 0.00001));
+  frac = (db + 60) / 60;
+  frac < 0 ? frac = 0;
+  y = bar_y + i * (bar_h + 3);
+  i == 0 ? gfx_set(0.55, 0.45, 0.95, 1)   // SUB     violet
+  : i == 1 ? gfx_set(0.18, 0.35, 0.78, 1) // LOW-MID navy
+  : i == 2 ? gfx_set(0.92, 0.66, 0.16, 1) // HIGH-MID amber
+  : gfx_set(0.25, 0.85, 0.95, 1);         // AIR     cyan
+  gfx_rect(0, y, frac * (gfx_w - lbl_w), bar_h, 1);
+  gfx_set(0.85, 0.88, 0.92, 0.9);
+  gfx_x = gfx_w - lbl_w + 6;
+  gfx_y = y + bar_h * 0.5 - 6;
+  gfx_drawnumber(db, 1);
+  i += 1;
+);
+
+// -- live playhead + envelope ---------------------------------------------
+ph = min(max(gmem[8200], 0), 1);
+env = min(max(gmem[8201], 0), 4);
+pan = min(max(gmem[8202], -1), 1);
+py = gfx_h - 14;
+env_y = py - min(env, 1.2) * (gfx_h - bar_y - 30);
+
+gfx_set(1, 1, 1, 0.35);
+gfx_line(ph * gfx_w, bar_y - 6, ph * gfx_w, py + 4); // playhead cursor
+gfx_set(0.45, 0.93, 0.75, 0.9);
+gfx_rect(ph * gfx_w - 1, env_y, 3, 3, 1);            // env gain dot
+gfx_set(0.45, 0.93, 0.75, 0.5);
+gfx_line((1 + pan) * 0.5 * gfx_w, py - 2, (1 + pan) * 0.5 * gfx_w, py + 2); // doppler pan
+gfx_set(0.6, 0.6, 0.6, 0.5);
+gfx_x = 4; gfx_y = py - 6;
+gfx_drawnumber(ph, 2);
