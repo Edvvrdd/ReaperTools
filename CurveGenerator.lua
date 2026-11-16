@@ -15,7 +15,8 @@
 --   right-click empty = add | Esc = close
 --   Sliders: resolution (samples/sec) and total curve duration (time-stretch)
 --
---   Requires ReaImGui (install via ReaPack).
+--   Uses REAPER's built-in gfx window (no ReaImGui needed). js_ReaScriptAPI
+--   is optional (native save dialog).
 -- @changelog
 --   v1.0
 --   - Initial release
@@ -47,15 +48,16 @@ function M.render_unity(points)
 end
 
 -- Godot Curve resources are normalized to x in 0..1; absolute duration goes in a comment.
+-- Godot 4 Curve._data = [Vector2(x, y), left_tangent, right_tangent (must be float), left_mode, right_mode, ...]
 function M.render_godot(points)
   local tmax = points[#points].t
   if tmax <= 0 then tmax = 1 end
   local buf = {}
   for i, p in ipairs(points) do
-    buf[i] = string.format("%s, %s, 0, 0, 0", n(p.t / tmax), n(p.v))
+    buf[i] = string.format("Vector2(%s, %s), 0.0, 0.0, 0, 0", n(p.t / tmax), n(p.v))
   end
   return string.format(
-    '; Haptic curve, duration %ss (x normalized 0..1)\n[gd_resource type="Curve" format=3]\n\n[resource]\n_data = {\n"points": PackedFloat32Array(%s),\n"point_count": %d\n}\n',
+    '; Haptic curve, duration %ss (x normalized 0..1)\n[gd_resource type="Curve" format=3]\n\n[resource]\n_data = [%s]\npoint_count = %d\n',
     n(tmax), table.concat(buf, ", "), #points)
 end
 
@@ -198,9 +200,9 @@ local function do_export()
   local filename
   if reaper.JS_Dialog_BrowseForSaveFile then
     local ret, fn = reaper.JS_Dialog_BrowseForSaveFile("Export " .. f.name, "", f.file, f.filter)
-    if ret and fn ~= "" then filename = fn end
-  end
-  if not filename then
+    if ret ~= 1 or fn == "" then return end -- ret is 1/0 (0 is truthy in Lua): cancelled
+    filename = fn
+  else
     local ok, input = reaper.GetUserInputs("Export " .. f.name, 1, "Save Path (" .. f.ext .. "):",
       reaper.GetProjectPath("") .. "/" .. f.file)
     if not ok then return end

@@ -188,7 +188,7 @@ out_pin:Right Output
 
 @init
 sc_pos = 0; sc_pk = 0; sc_cnt = 0; // scope ring-buffer state
-// disp[3] band-bar display decay, auto-zeroed
+buf = 0; disp = 256; // scope ring 0..255, band-bar decay 256..259 (unset vars both = 0 -> overlap)
 
 @sample
 // passthrough: spl read-only, never written
@@ -294,11 +294,17 @@ end
 -- ---------------------------------------------------------------------------
 
 local ITEM_PROPS = {
-  "D_POSITION", "D_LENGTH", "D_VOL", "D_PAN", "D_PLAYRATE", "S_OFFS",
+  "D_POSITION", "D_LENGTH", "D_VOL", "D_PAN", "D_PLAYRATE",
   "B_LOOPSRC", "B_MUTE", "D_FADEINLEN", "D_FADEOUTLEN",
   "D_FADEINLEN_AUTO", "D_FADEOUTLEN_AUTO", "C_FADEINSHAPE", "C_FADEOUTSHAPE",
   "D_SNAPOFFSET", "I_CUSTOMCOLOR",
 }
+
+-- GetMediaSourceType returns a type string ("WAVE", "MIDI", ...), not a number
+local function is_audio(src)
+  local t = src and r.GetMediaSourceType(src) or ""
+  return t ~= "" and t ~= "EMPTY" and not t:find("MIDI")
+end
 
 -- ponytail: clones active take only, take FX/envs not copied; MIDI items are
 -- left on the parent (warned) — upgrade path: copy/paste actions or take copies
@@ -306,8 +312,7 @@ local function clone_item(it, dest)
   local src_tk = r.GetActiveTake(it)
   if not src_tk then return false end
   local source = r.GetMediaItemTake_Source(src_tk)
-  local stype = r.GetMediaSourceType(source)
-  if stype == 2 or stype == -1 then return false end -- MIDI/unknown
+  if not is_audio(source) then return false end -- MIDI/empty
 
   local new = r.AddMediaItemToTrack(dest)
   local tk = r.AddTakeToMediaItem(new)
@@ -385,8 +390,7 @@ local function create_rig(src)
   -- originals: remove cloned ones, leave unclonable (MIDI) items on the parent
   for _, it in ipairs(items) do
     local tk = r.GetActiveTake(it)
-    local ok = tk and r.GetMediaSourceType(r.GetMediaItemTake_Source(tk))
-    if ok and ok ~= 2 and ok ~= -1 then r.DeleteTrackMediaItem(src, it) end
+    if tk and is_audio(r.GetMediaItemTake_Source(tk)) then r.DeleteTrackMediaItem(src, it) end
   end
 
   -- visualizer on the parent (passthrough): scope + per-band meters
@@ -488,8 +492,6 @@ local function pop_theme()
   r.ImGui_PopStyleColor(ctx, 7)
 end
 
-local started, hidden_frames = false, 0
-
 local function crossover_slider(label, val, vmin, vmax, is_f1)
   -- sliders only stage values locally; the Apply button pushes to the filters
   local _, nv = r.ImGui_SliderDouble(ctx, label, val, vmin, vmax, "%.0f Hz")
@@ -542,15 +544,8 @@ local function loop()
   end
   pop_theme()
 
-  -- window-gone detection (close button / docked tab dismissed)
-  if vis then
-    started = true
-    hidden_frames = 0
-  else
-    hidden_frames = hidden_frames + 1
-  end
-  local closed = (not open) or (started and hidden_frames > 15)
-  if closed then
+  -- only the close button ends the script; vis==false = hidden (e.g. docked tab)
+  if not open then
     if r.ImGui_DestroyContext then
       r.defer(function() r.ImGui_DestroyContext(ctx) end)
     end

@@ -166,9 +166,9 @@ local state = {
   has_generated_item = false
 }
 
--- Filter intensity (0..1) → high-pass edge cutoff in Hz (20 Hz .. 2 kHz, log)
+-- Filter intensity (0..1) → high-pass edge cutoff in Hz (100 Hz .. 3 kHz, log);
+-- the band opens to 100 Hz at the peak.
 local function filter_edge_hz(i)
-  -- Sweep range: 100 Hz (open, at the peak) .. 3000 Hz (edge, at 100% intensity)
   return 100.0 * (30.0 ^ math.max(0.0, math.min(1.0, i)))
 end
 
@@ -233,12 +233,12 @@ function draw_preview()
   local dur_left = dur_x0 + dur_inset * dur_active_w
   local dur_right = dur_x1 - dur_inset * dur_active_w
 
-  r.ImGui_DrawList_AddRectFilled(dl, dur_left, cy + 5, dur_right, cy + 15, 0x222D6D8C, 2)
+  r.ImGui_DrawList_AddRectFilled(dl, dur_left, cy + 5, dur_right, cy + 15, 0x2D6D8C22, 2)
 
   local dk_r = 5
-  r.ImGui_DrawList_AddCircleFilled(dl, dur_left, dur_cy, dk_r + 2, 0x332D6D8C)
+  r.ImGui_DrawList_AddCircleFilled(dl, dur_left, dur_cy, dk_r + 2, 0x2D6D8C33)
   r.ImGui_DrawList_AddCircleFilled(dl, dur_left, dur_cy, dk_r, theme.SliderGrab)
-  r.ImGui_DrawList_AddCircleFilled(dl, dur_right, dur_cy, dk_r + 2, 0x332D6D8C)
+  r.ImGui_DrawList_AddCircleFilled(dl, dur_right, dur_cy, dk_r + 2, 0x2D6D8C33)
   r.ImGui_DrawList_AddCircleFilled(dl, dur_right, dur_cy, dk_r, theme.SliderGrab)
 
   local dur_hit = my >= cy and my <= cy + 20 and mx >= dur_x0 and mx <= dur_x1
@@ -261,8 +261,8 @@ function draw_preview()
   local active_w = W * (1 - 2 * inset_frac)
   local margin_w = W * inset_frac
   if margin_w > 1 then
-    r.ImGui_DrawList_AddRectFilled(dl, cx, cy, cx + margin_w, cy + H, 0x30000000, 0)
-    r.ImGui_DrawList_AddRectFilled(dl, cx + W - margin_w, cy, cx + W, cy + H, 0x30000000, 0)
+    r.ImGui_DrawList_AddRectFilled(dl, cx, cy, cx + margin_w, cy + H, 0x00000030, 0)
+    r.ImGui_DrawList_AddRectFilled(dl, cx + W - margin_w, cy, cx + W, cy + H, 0x00000030, 0)
   end
 
   -- ── ENVELOPE MATH (computed first so dots can use it) ──
@@ -441,14 +441,14 @@ function draw_preview()
   end
 
   -- Draw the peak dot as an ellipse (gold, glowy)
-  r.ImGui_DrawList_AddEllipseFilled(dl, peak_dot_x, peak_dot_y, peak_dot_rx,     peak_dot_ry,     0xFF2D6D8C)  -- body
-  r.ImGui_DrawList_AddEllipse(dl, peak_dot_x, peak_dot_y, peak_dot_rx + 2, peak_dot_ry + 2, 0x2D6D8C88, 1.5)  -- clean ring
+  r.ImGui_DrawList_AddEllipseFilled(dl, peak_dot_x, peak_dot_y, peak_dot_rx,     peak_dot_ry,     0x2D6D8CFF)  -- body
+  r.ImGui_DrawList_AddEllipse(dl, peak_dot_x, peak_dot_y, peak_dot_rx + 2, peak_dot_ry + 2, 0x2D6D8C88, 0, 0, 1.5)  -- clean ring (args: rot, segments, thickness)
   if on_dot or peak_dragging then
     show_tooltip("Peak position and hold time.\nDrag horizontally to move the peak.\nDrag vertically to adjust hold time.\nUp = longer hold, Down = shorter hold.")
   end
 
   -- Small directional triangles around the dot (up/down only)
-  local arr_col = 0xFF33A07C
+  local arr_col = 0x33A07CFF
   local arr_s = 4  -- triangle size
   local arr_off = peak_dot_ry + 6  -- distance from dot center
   -- Up: ▲
@@ -493,8 +493,8 @@ function draw_preview()
   local p1x, p1y = rise_tri_x - rise_tri_s, rise_tri_y           -- left point
   local p2x, p2y = rise_tri_x + rise_tri_s, rise_tri_y - rise_tri_s  -- top right
   local p3x, p3y = rise_tri_x + rise_tri_s, rise_tri_y + rise_tri_s  -- bottom right
-  r.ImGui_DrawList_AddTriangleFilled(dl, p1x, p1y, p2x, p2y, p3x, p3y, 0xFF2D6D8C)  -- body
-  r.ImGui_DrawList_AddTriangleFilled(dl, rise_tri_x - rise_tri_s + 3, rise_tri_y, rise_tri_x + rise_tri_s - 3, rise_tri_y - rise_tri_s + 4, rise_tri_x + rise_tri_s - 3, rise_tri_y + rise_tri_s - 4, 0xFF33A07C)  -- highlight
+  r.ImGui_DrawList_AddTriangleFilled(dl, p1x, p1y, p2x, p2y, p3x, p3y, 0x2D6D8CFF)  -- body
+  r.ImGui_DrawList_AddTriangleFilled(dl, rise_tri_x - rise_tri_s + 3, rise_tri_y, rise_tri_x + rise_tri_s - 3, rise_tri_y - rise_tri_s + 4, rise_tri_x + rise_tri_s - 3, rise_tri_y + rise_tri_s - 4, 0x33A07CFF)  -- highlight
   if rise_hit or rise_dragging then
     show_tooltip("Rise tension (attack curvature).\nDrag left = sharp attack.\nDrag right = gradual attack.")
   end
@@ -530,8 +530,8 @@ function draw_preview()
   local fp1x, fp1y = fall_tri_x + fall_tri_s, fall_tri_y            -- right point
   local fp2x, fp2y = fall_tri_x - fall_tri_s, fall_tri_y - fall_tri_s  -- top left
   local fp3x, fp3y = fall_tri_x - fall_tri_s, fall_tri_y + fall_tri_s  -- bottom left
-  r.ImGui_DrawList_AddTriangleFilled(dl, fp1x, fp1y, fp2x, fp2y, fp3x, fp3y, 0xFF2D6D8C)  -- body
-  r.ImGui_DrawList_AddTriangleFilled(dl, fall_tri_x + fall_tri_s - 3, fall_tri_y, fall_tri_x - fall_tri_s + 3, fall_tri_y - fall_tri_s + 4, fall_tri_x - fall_tri_s + 3, fall_tri_y + fall_tri_s - 4, 0xFF33A07C)  -- highlight
+  r.ImGui_DrawList_AddTriangleFilled(dl, fp1x, fp1y, fp2x, fp2y, fp3x, fp3y, 0x2D6D8CFF)  -- body
+  r.ImGui_DrawList_AddTriangleFilled(dl, fall_tri_x + fall_tri_s - 3, fall_tri_y, fall_tri_x - fall_tri_s + 3, fall_tri_y - fall_tri_s + 4, fall_tri_x - fall_tri_s + 3, fall_tri_y + fall_tri_s - 4, 0x33A07CFF)  -- highlight
   if fall_hit or fall_dragging then
     show_tooltip("Fall tension (release curvature).\nDrag right = sharp release.\nDrag left = gradual release.")
   end
@@ -652,11 +652,11 @@ function draw_preview()
     hover_t = math.max(0, math.min(1, hover_t))
     local hover_x = cx + hover_t * W
 
-    r.ImGui_DrawList_AddLine(dl, hover_x, cy, hover_x, cy + H, 0x88FFFFFF, 1.0)
+    r.ImGui_DrawList_AddLine(dl, hover_x, cy, hover_x, cy + H, 0xFFFFFF88, 1.0)
 
     local hv_vol = math.max(0, math.min(1, vol_fn(hover_t)))
     local time_s = hover_t * dur
-    r.ImGui_DrawList_AddText(dl, hover_x + 8, my - 30, 0xFFCCCCCC,
+    r.ImGui_DrawList_AddText(dl, hover_x + 8, my - 30, 0xCCCCCCFF,
       string.format("%.2fs\nVol: %.0f%%", time_s, hv_vol * 100))
   end
 end
@@ -691,20 +691,15 @@ function refresh_source_info()
     local track_num = r.GetMediaTrackInfo_Value(sel_track, 'IP_TRACKNUMBER')
     local folder_0based_idx = track_num - 1
     local total_tracks = r.CountTracks(0)
-    local seen_child = false
+    -- Walk the folder by cumulative depth: the track that brings it to <= 0
+    -- (I_FOLDERDEPTH -1/-2...) is the LAST child and is still scanned.
+    local level = 1
     
     for i = folder_0based_idx + 1, total_tracks - 1 do
       local child_track = r.GetTrack(0, i)
       if not child_track then break end
-      
-      local child_depth = r.GetMediaTrackInfo_Value(child_track, 'I_FOLDERDEPTH')
-      -- A structural folder terminator never carries media. REAPER sometimes
-      -- stamps the last dragged-in child itself with -1, so a depth<0 track
-      -- with items is a child, not the end.
-      if child_depth < 0 and (not seen_child or r.CountTrackMediaItems(child_track) == 0) then break end
-      if child_depth < 0 then r.SetMediaTrackInfo_Value(child_track, 'I_FOLDERDEPTH', 0) end
+      level = level + r.GetMediaTrackInfo_Value(child_track, 'I_FOLDERDEPTH')
 
-      seen_child = true
       -- A child only counts as a valid source if its items overlap the
       -- time selection (grains can only come from that range).
       local overlaps = false
@@ -722,6 +717,7 @@ function refresh_source_info()
         state.child_count = state.child_count + 1
         state.source_tracks[#state.source_tracks + 1] = child_track
       end
+      if level <= 0 then break end
     end
   end
 end
@@ -829,7 +825,7 @@ function find_temp_track()
   if _track_cache.track and now - _track_cache.time < 0.5 then
     -- Cached pointer can go stale if the temp track was deleted/undone (REAPER
     -- rejects dead handles); a stale hit must fall through to the scan, not return nil.
-    if r.ValidatePtr2(0, _track_cache.track, 'MediaTrack') then
+    if r.ValidatePtr2(0, _track_cache.track, 'MediaTrack*') then
       local cached = _track_cache.track
       local _, cached_name = r.GetSetMediaTrackInfo_String(cached, 'P_NAME', '', false)
       if cached_name == state.temp_track_name then
@@ -881,6 +877,7 @@ function do_generate(is_mono, apply_env)
   if apply_env == nil then apply_env = true end
 
   seed_random()  -- fresh grain layout every preview
+  local folder = state.folder_track  -- reselected at the end (envelope actions steal track selection)
 
   state.is_generating = true
   state.status_msg = "Generating..."
@@ -901,7 +898,8 @@ function do_generate(is_mono, apply_env)
   r.InsertTrackAtIndex(0, true)
   local temp_track = r.GetTrack(0, 0)
   r.GetSetMediaTrackInfo_String(temp_track, 'P_NAME', unique_name, true)
-  r.SetMediaTrackInfo_Value(temp_track, 'I_NCHAN', is_mono and 1 or 2)
+  -- Mono = per-take downmix (I_CHANMODE 2); I_NCHAN must stay even (2..128).
+  local chanmode = is_mono and 2 or 0
   
   -- Force auto-crossfade on so grain edges blend
   local xfade_was_on = r.GetToggleCommandState(40041) == 1
@@ -972,7 +970,13 @@ function do_generate(is_mono, apply_env)
       local track = source_tracks[order[i]]
       if not track then break end
       
-      local item = r.GetTrackMediaItem(track, 0)
+      -- first item on the source track that overlaps the window
+      local item
+      for ti = 0, r.CountTrackMediaItems(track) - 1 do
+        local it = r.GetTrackMediaItem(track, ti)
+        local ip = r.GetMediaItemInfo_Value(it, 'D_POSITION')
+        if ip < win_end and ip + r.GetMediaItemInfo_Value(it, 'D_LENGTH') > win_start then item = it break end
+      end
       if item then
         local take = r.GetActiveTake(item)
         if take then
@@ -994,6 +998,7 @@ function do_generate(is_mono, apply_env)
             local new_take = r.AddTakeToMediaItem(new_item)
             r.SetMediaItemTake_Source(new_take, source)
             r.SetMediaItemTakeInfo_Value(new_take, 'D_STARTOFFS', 0.0)
+            r.SetMediaItemTakeInfo_Value(new_take, 'I_CHANMODE', chanmode)
             
             table.insert(grain_items, new_item)
             count = count + 1
@@ -1081,6 +1086,7 @@ function do_generate(is_mono, apply_env)
                 local nt = r.AddTakeToMediaItem(ni)
                 r.SetMediaItemTake_Source(nt, source)
                 r.SetMediaItemTakeInfo_Value(nt, 'D_STARTOFFS', base_pos)
+                r.SetMediaItemTakeInfo_Value(nt, 'I_CHANMODE', chanmode)
                 
                 if rate ~= 1.0 then
                   r.SetMediaItemTakeInfo_Value(nt, 'D_PLAYRATE', rate)
@@ -1156,6 +1162,8 @@ function do_generate(is_mono, apply_env)
   if apply_env then
     apply_volume_envelope()  -- synchronous: track must still resolve, no defer timing risk
   end
+  -- keep the folder selected so Preview can be re-run straight away
+  if folder and r.ValidatePtr2(0, folder, 'MediaTrack*') then r.SetOnlyTrackSelected(folder) end
 end
 
 function do_render(is_mono)
@@ -1169,6 +1177,7 @@ function do_render(is_mono)
     return
   end
 
+  local folder = state.folder_track
   r.Undo_BeginBlock()
   r.PreventUIRefresh(1)
 
@@ -1192,13 +1201,20 @@ function do_render(is_mono)
   local stem_track = r.GetSelectedTrack(0, 0)
   if stem_track then
     r.GetSetMediaTrackInfo_String(stem_track, 'P_NAME', state.temp_track_name .. "_render", true)
-    local nchan = state.is_mono and 1 or 2
-    r.SetMediaTrackInfo_Value(stem_track, 'I_NCHAN', nchan)
+    -- ponytail: mono = downmixed playback of the stereo stem file; a true
+    -- mono file needs the mono render-to-stem action instead of 41716.
+    if state.is_mono then
+      for i = 0, r.CountTrackMediaItems(stem_track) - 1 do
+        local tk = r.GetActiveTake(r.GetTrackMediaItem(stem_track, i))
+        if tk then r.SetMediaItemTakeInfo_Value(tk, 'I_CHANMODE', 2) end
+      end
+    end
     r.SetMediaTrackInfo_Value(temp_track, 'B_MUTE', 0)
     r.ReorderSelectedTracks(temp_idx + 1, 0)
   end
 
   r.GetSet_LoopTimeRange(true, false, prev_ts_s, prev_ts_e, false)
+  if folder and r.ValidatePtr2(0, folder, 'MediaTrack*') then r.SetOnlyTrackSelected(folder) end
 
   state.status_msg = string.format("Rendered — '%s_render' placed below temp track", state.temp_track_name)
 
@@ -1348,8 +1364,8 @@ function apply_doppler_envelopes(env_start, env_end, anchor_start, anchor_end, a
 
   ----------------------------------------------------------------------
   -- Filter envelope (ReaEQ — single high-pass band)
-  -- Intensity sets the edge cutoff (20 Hz .. 2 kHz); the band always opens
-  -- to ~20 Hz at the whoosh peak. Bypassed at intensity 0.
+  -- Intensity sets the edge cutoff (100 Hz .. 3 kHz); the band always opens
+  -- to 100 Hz at the whoosh peak. Bypassed at intensity 0.
   -- ReaEQ exposes no automatable "type" parameter, so the band is forced
   -- via TrackFX_SetEQParam (bandtype 0 = high pass), which targets the
   -- first HP band or creates one. The envelope is written to that exact
@@ -1468,9 +1484,6 @@ end
 ---------------------------------------------------------------------
 -- Main Draw Loop
 ---------------------------------------------------------------------
-local started = false      -- true once the window has been drawn at least once
-local hidden_frames = 0    -- consecutive frames the window reported not visible
-
 -- Single-row layout: identity+presets (left) | center block (sampling/grain
 -- strip, visualizer, direction strip) | generation (right). The center block
 -- takes the remaining width; the horizontal scrollbar covers narrow windows.
@@ -1629,10 +1642,11 @@ end
 local function panel_presets()
   section_header("Presets")
   if r.ImGui_Button(ctx, "Save Preset", -1, 28) then
+    local saved = false
     for slot = 1, MAX_PRESETS do
-      if not has_preset(slot) then save_preset(slot) break end
+      if not has_preset(slot) then save_preset(slot) saved = true break end
     end
-    if not (state.status_msg or ""):find("Saved preset") then
+    if not saved then
       state.status_msg = "Error — all " .. MAX_PRESETS .. " preset slots full (overwrite via Options)"
     end
   end
@@ -1769,24 +1783,9 @@ function loop()
     if not opt_open then show_options = false end
   end
 
-  -- Track real window visibility. `open` only flips false on the floating
-  -- close (X) button; a docked window whose tab is dismissed (or any hidden
-  -- state) surfaces as vis==false from Begin. We must not call End when
-  -- vis==false, and we use the same signal to detect actual window loss.
-  if vis then
-    started = true
-    hidden_frames = 0
-  else
-    hidden_frames = hidden_frames + 1
-  end
-
-  -- Terminate the defer chain once the window is genuinely gone: either the
-  -- user clicked the close button (open==false) or the window has stayed
-  -- hidden for a brief grace period (docked tab dismissed / window hidden).
-  -- The grace absorbs one-frame invisibility during dock transitions.
-  local closed = (not open) or (started and hidden_frames > 15)
-
-  if closed then
+  -- Only the close button ends the script. vis==false just means hidden
+  -- (e.g. docked behind another tab) — keep running (ReaImGui demo pattern).
+  if not open then
     -- ReaImGui reclaims the context when the script ends; destroy it
     -- explicitly on the next tick if the API is available.
     if r.ImGui_DestroyContext then

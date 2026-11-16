@@ -18,7 +18,7 @@ out_pin:Right Output
 
 @init
 sc_pos = 0; sc_pk = 0; sc_cnt = 0; // scope ring-buffer state
-// disp[3] band-bar display decay, auto-zeroed
+buf = 0; disp = 256; // scope ring 0..255, band-bar decay 256..259 (unset vars both = 0 -> overlap)
 
 @sample
 // passthrough: spl read-only, never written

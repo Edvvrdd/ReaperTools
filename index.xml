@@ -51,6 +51,16 @@
         <source main="main">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/QikWhoosh.lua</source>
       </version>
     </reapack>
+    <reapack name="ReaRandomMod.lua" type="script" desc="FX Randomizer &amp; Modulator — one-click FX parameter randomizer with native LFOs">
+      <metadata>
+        <description>Randomizes the parameters of the focused or last-touched track FX in one click, with guardrails (bypass/wet/gain protection, avoid-extremes margin), per-parameter locks for re-rolling, and optional native REAPER parameter-modulation LFOs wired onto the rolled parameters. Every roll is one undo point. Requires REAPER 7+ and ReaImGui.</description>
+        <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
+      </metadata>
+      <version name="1.0.0" author="Ed" time="2026-11-16T00:00:00Z">
+        <changelog><![CDATA[Initial release]]></changelog>
+        <source main="main">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/ReaRandomMod.lua</source>
+      </version>
+    </reapack>
     <reapack name="CurveGenerator.lua" type="script" desc="Haptic curve generator — exports audio as Unreal/Unity/Godot curves">
       <metadata>
         <description>Turns a REAPER audio item into a haptic feedback curve and exports it for Unreal (CSV), Unity (AnimationCurve JSON) or Godot 4 (.tres)</description>

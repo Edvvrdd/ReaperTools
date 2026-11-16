@@ -304,7 +304,7 @@ out_pin:Right Output
 
 @init
 sc_pos = 0; sc_pk = 0; sc_cnt = 0; // scope ring-buffer state
-// disp[3] band-bar display decay, auto-zeroed
+buf = 0; disp = 256; // scope ring 0..255, band-bar decay 256..259 (unset vars both = 0 -> overlap)
 
 @sample
 // passthrough: spl read-only, never written
@@ -458,11 +458,17 @@ end
 ---------------------------------------------------------------------
 
 local ITEM_PROPS = {
-  "D_POSITION", "D_LENGTH", "D_VOL", "D_PAN", "D_PLAYRATE", "S_OFFS",
+  "D_POSITION", "D_LENGTH", "D_VOL", "D_PAN", "D_PLAYRATE",
   "B_LOOPSRC", "B_MUTE", "D_FADEINLEN", "D_FADEOUTLEN",
   "D_FADEINLEN_AUTO", "D_FADEOUTLEN_AUTO", "C_FADEINSHAPE", "C_FADEOUTSHAPE",
   "D_SNAPOFFSET", "I_CUSTOMCOLOR",
 }
+
+-- GetMediaSourceType returns a type string ("WAVE", "MIDI", ...), not a number
+local function is_audio(src)
+  local t = src and r.GetMediaSourceType(src) or ""
+  return t ~= "" and t ~= "EMPTY" and not t:find("MIDI")
+end
 
 -- ponytail: clones active take only, take FX/envs not copied; MIDI items are
 -- left in place (warned) — upgrade path: copy/paste actions or take copies
@@ -470,8 +476,7 @@ local function clone_item(it, dest)
   local src_tk = r.GetActiveTake(it)
   if not src_tk then return false end
   local source = r.GetMediaItemTake_Source(src_tk)
-  local stype = r.GetMediaSourceType(source)
-  if stype == 2 or stype == -1 then return false end -- MIDI/unknown
+  if not is_audio(source) then return false end -- MIDI/empty
 
   local new = r.AddMediaItemToTrack(dest)
   local tk = r.AddTakeToMediaItem(new)
@@ -739,8 +744,7 @@ local function create_rig(src)
   -- originals: remove cloned ones, leave unclonable (MIDI) items on the parent
   for _, it in ipairs(items) do
     local tk = r.GetActiveTake(it)
-    local ok = tk and r.GetMediaSourceType(r.GetMediaItemTake_Source(tk))
-    if ok and ok ~= 2 and ok ~= -1 then r.DeleteTrackMediaItem(src, it) end
+    if tk and is_audio(r.GetMediaItemTake_Source(tk)) then r.DeleteTrackMediaItem(src, it) end
   end
 
   -- Brain (live envelope/doppler) first, Visualizer last, on the parent
@@ -799,8 +803,7 @@ local function collect_bucket_sources(btr)
     local tk = r.GetActiveTake(it)
     if tk then
       local src = r.GetMediaItemTake_Source(tk)
-      local st = r.GetMediaSourceType(src)
-      if st ~= 2 and st ~= -1 then
+      if is_audio(src) then
         -- returns (length_seconds, is_in_quarter_notes); MIDI is filtered out above
         local len = r.GetMediaSourceLength(src)
         sources[#sources + 1] = {
@@ -940,9 +943,11 @@ local function clear_grains()
   for mode = 0, 3 do
     local btr = rig_buckets(parent)[mode]
     if btr then
-      local grains = {}
+      local grains, n_kids = {}, 0
       if r.GetMediaTrackInfo_Value(btr, "I_FOLDERDEPTH") == 1 then
-        for _, tr in ipairs(folder_children(btr)) do
+        local kids = folder_children(btr)
+        n_kids = #kids
+        for _, tr in ipairs(kids) do
           if get_ext(tr, EXT_GRAINS) == "1" then grains[#grains + 1] = tr end
         end
       end
@@ -950,9 +955,11 @@ local function clear_grains()
         r.DeleteTrack(gtr)
         removed = removed + 1
       end
-      -- bucket that only held grains: un-folder it (last band closes the rig folder)
-      if #grains > 0 and r.GetMediaTrackInfo_Value(btr, "I_FOLDERDEPTH") == 1
-         and #folder_children(btr) == 0 then
+      -- bucket that only held grains: un-folder it (last band closes the rig folder).
+      -- Counted before deleting: folder_children() of a now-empty folder would
+      -- walk into the next bucket. Skipped if REAPER already fixed the depth.
+      if #grains > 0 and #grains == n_kids
+         and r.GetMediaTrackInfo_Value(btr, "I_FOLDERDEPTH") == 1 then
         r.SetMediaTrackInfo_Value(btr, "I_FOLDERDEPTH", mode == 3 and -1 or 0)
       end
     end
@@ -974,11 +981,13 @@ local function move_selection_to_bucket(mode)
     state.status_msg = "Select some media items first"
     return
   end
+  -- snapshot first: deleting while indexing the selection skips items
+  local sel = {}
+  for i = 0, n - 1 do sel[#sel + 1] = r.GetSelectedMediaItem(0, i) end
   r.Undo_BeginBlock2(0)
   r.PreventUIRefresh(1)
   local moved = 0
-  for i = 0, n - 1 do
-    local it = r.GetSelectedMediaItem(0, i)
+  for _, it in ipairs(sel) do
     local src_tr = r.GetMediaItem_Track(it)
     if src_tr ~= btr and clone_item(it, btr) then
       r.DeleteTrackMediaItem(src_tr, it)
@@ -1020,7 +1029,7 @@ end
 local function current_playhead()
   local playing = (r.GetPlayState() & 1) == 1
   if state.live and playing then
-    local _, sel_s, sel_e = r.GetSet_LoopTimeRange(false, true, 0, 0, false)
+    local sel_s, sel_e = r.GetSet_LoopTimeRange(false, true, 0, 0, false)
     local pos = r.GetPlayPosition()
     if sel_e > sel_s and pos >= sel_s and pos <= sel_e then
       state.playhead = (pos - sel_s) / (sel_e - sel_s)
@@ -1043,11 +1052,13 @@ local function render_stem(mono)
   local old_bounds  = r.GetSetProjectInfo(0, "RENDER_BOUNDSFLAG", 0, false)
   local old_settings = r.GetSetProjectInfo(0, "RENDER_SETTINGS", 0, false)
   local old_chan    = r.GetSetProjectInfo(0, "RENDER_CHANNELS", 0, false)
+  local _, old_dir  = r.GetSetProjectInfo_String(0, "RENDER_FILE", "", false)
+  local _, old_pat  = r.GetSetProjectInfo_String(0, "RENDER_PATTERN", "", false)
 
-  r.GetSetProjectInfo(0, "RENDER_BOUNDSFLAG", has_ts and 1 or 0, true) -- time sel / project
-  r.GetSetProjectInfo(0, "RENDER_SETTINGS", 1, true)                   -- stems (selected tracks)
+  r.GetSetProjectInfo(0, "RENDER_BOUNDSFLAG", has_ts and 2 or 1, true) -- 2 = time sel, 1 = entire project
+  r.GetSetProjectInfo(0, "RENDER_SETTINGS", 2, true)                   -- 2 = stems only (selected tracks)
   r.GetSetProjectInfo(0, "RENDER_CHANNELS", mono and 1 or 2, true)
-  r.GetSetProjectInfo_String(0, "RENDER_DIR", r.GetProjectPath(""), true)
+  r.GetSetProjectInfo_String(0, "RENDER_FILE", r.GetProjectPath(""), true)
   r.GetSetProjectInfo_String(0, "RENDER_PATTERN", "ReaBlender stem", true)
 
   r.Main_OnCommand(41824, 0) -- render using the (just-set) settings, auto-close dialog
@@ -1055,6 +1066,8 @@ local function render_stem(mono)
   r.GetSetProjectInfo(0, "RENDER_BOUNDSFLAG", old_bounds, true)
   r.GetSetProjectInfo(0, "RENDER_SETTINGS", old_settings, true)
   r.GetSetProjectInfo(0, "RENDER_CHANNELS", old_chan, true)
+  r.GetSetProjectInfo_String(0, "RENDER_FILE", old_dir, true)
+  r.GetSetProjectInfo_String(0, "RENDER_PATTERN", old_pat, true)
 
   state.is_mono = mono
   state.status_msg = "Rendering " .. (mono and "mono" or "stereo") .. " stem to " .. r.GetProjectPath("")
@@ -1213,7 +1226,7 @@ local function draw_curve()
   -- ── peak dot (drag: position + level) ──
   local pk_lvl = (state.peak_db - (-24)) / 24 -- -24 dB -> 0, 0 dB -> 1
   local dot_x, dot_y = tx(state.peak_pos), mid - half * pk_lvl
-  r.ImGui_DrawList_AddCircleFilled(dl, dot_x, dot_y, 8, 0xFF2D6D8C)
+  r.ImGui_DrawList_AddCircleFilled(dl, dot_x, dot_y, 8, 0x2D6D8CFF)
   r.ImGui_DrawList_AddCircle(dl, dot_x, dot_y, 10, 0x2D6D8C88, 0, 1.5)
   if clicked and math.abs(mx - dot_x) < 12 and math.abs(my - dot_y) < 12 then
     peak_dragging = true
@@ -1236,8 +1249,8 @@ local function draw_curve()
     r.ImGui_DrawList_AddTriangleFilled(dl, x, mid - tri_s, x - tri_s, mid, x, mid + tri_s, col)
   end
   local rise_x, fall_x = tx(ps), tx(pe)
-  tri(rise_x, 0xFF2D6D8C)
-  tri(fall_x, 0xFF33A07C)
+  tri(rise_x, 0x2D6D8CFF)
+  tri(fall_x, 0x33A07CFF)
   if clicked and math.abs(my - mid) < 10 then
     if math.abs(mx - rise_x) < 10 then
       rise_dragging, rise_start_mx, rise_start_val = true, mx, state.rise
@@ -1265,9 +1278,9 @@ local function draw_curve()
      and not (peak_dragging or rise_dragging or fall_dragging) then
     local t = (mx - x0) / (x1 - x0)
     local v = env_shape(t, state.peak_pos, state.hold, state.rise, state.fall)
-    local db = -90 + v * (state.peak_db + 90) -- floor..peak
-    r.ImGui_DrawList_AddLine(dl, mx, cy, mx, cy + H, 0x88FFFFFF, 1.0)
-    r.ImGui_DrawList_AddText(dl, mx + 8, cy + 6, 0xFFCCCCCC,
+    local db = state.floor_db + v * (state.peak_db - state.floor_db) -- same mapping as the Brain
+    r.ImGui_DrawList_AddLine(dl, mx, cy, mx, cy + H, 0xFFFFFF88, 1.0)
+    r.ImGui_DrawList_AddText(dl, mx + 8, cy + 6, 0xCCCCCCFF,
       string.format("t %.2f   %.1f dB", t, math.max(state.floor_db, math.min(state.peak_db, db))))
   end
 end
@@ -1441,8 +1454,6 @@ end
 -- Main loop
 ---------------------------------------------------------------------
 
-local started, hidden_frames = false, 0
-
 function loop()
   -- cached parent handle may go stale (delete/undo) — validate before use
   if not r.ValidatePtr2(0, parent, "MediaTrack*") then
@@ -1515,15 +1526,8 @@ function loop()
   end
   pop_theme()
 
-  -- window-gone detection (close button / docked tab dismissed)
-  if vis then
-    started = true
-    hidden_frames = 0
-  else
-    hidden_frames = hidden_frames + 1
-  end
-  local closed = (not open) or (started and hidden_frames > 15)
-  if closed then
+  -- only the close button ends the script; vis==false = hidden (e.g. docked tab)
+  if not open then
     save_settings()
     if r.ImGui_DestroyContext then
       r.defer(function() r.ImGui_DestroyContext(ctx) end)
