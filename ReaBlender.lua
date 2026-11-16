@@ -1,6 +1,6 @@
 -- @description ReaBlender
 -- @author Ed
--- @version 1.0.0
+-- @version 1.0.1
 -- @provides [main] .
 -- [effect] SoundDesignTools/ReaBlender_Filter.jsfx
 -- [effect] SoundDesignTools/ReaBlender_Brain.jsfx

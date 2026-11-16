@@ -1,6 +1,6 @@
 -- @description QikWhoosh
 -- @author Ed
--- @version 1.0
+-- @version 1.0.1
 -- @provides [main] .
 -- @about
 --   # QikWhoosh — Granular Whoosh Generator

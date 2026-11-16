@@ -6,8 +6,8 @@
         <description>Unified Sound/Dev/Ed sound design suite: one-button multiband rig (Sub/Low-Mid/High-Mid/Air buckets split by phase-coherent Linkwitz-Riley 4th-order filters) + granular whoosh engine with Auto-Whoosh and Live performance modes, interactive envelope curve editor, per-bucket ingredient management and stem rendering.</description>
         <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
       </metadata>
-      <version name="1.0.0" author="Ed" time="2026-11-16T00:00:00Z">
-        <changelog><![CDATA[Initial release: merges the multiband rig builder and the granular whoosh engine. Fixes the band-FX control bug: filters are located by robust filename+description matching with ValidatePtr2 guards and updated with native (Hz) parameter values while walking the rig folder structure.]]></changelog>
+      <version name="1.0.1" author="Ed" time="2026-11-16T20:00:00Z">
+        <changelog><![CDATA[Fix ReaImGui crash on launch (DrawList_AddCircle thickness passed as num_segments). Fix Live mode crash, MIDI detection, item-move skipping, stem render bounds/source/output dir, Clear Grains folder structure, colors (RGBA), docked window closing.]]></changelog>
         <source main="main">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/ReaBlender.lua</source>
       </version>
     </reapack>
@@ -36,8 +36,8 @@
         <description>Passthrough JSFX for the [ReaBlender] parent: scrolling output scope, violet/navy/amber/cyan band level meters fed by ReaBlender_Filter over shared gmem, plus the Brain's live playhead cursor and envelope gain dot.</description>
         <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
       </metadata>
-      <version name="1.0.0" author="Ed" time="2026-11-16T00:00:00Z">
-        <changelog><![CDATA[Initial release]]></changelog>
+      <version name="1.0.1" author="Ed" time="2026-11-16T20:00:00Z">
+        <changelog><![CDATA[Fix scope buffer and band-meter decay sharing the same memory.]]></changelog>
         <source main="main" file="SoundDesignTools/ReaBlender_Visualizer.jsfx">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/ReaBlender_Visualizer.jsfx</source>
       </version>
     </reapack>
@@ -46,8 +46,8 @@
         <description>Granular whoosh generator for REAPER</description>
         <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
       </metadata>
-      <version name="1.0.0" author="Ed" time="2026-10-27T00:00:00Z">
-        <changelog><![CDATA[Major rebuild: new Sequential sampling mode, Doppler envelope section, Resample to folder, and UI enhancements]]></changelog>
+      <version name="1.0.1" author="Ed" time="2026-11-16T20:00:00Z">
+        <changelog><![CDATA[Folder scan no longer rewrites track folder depth; last child is scanned. Fix stale-track check, docked window closing, peak ring rotation, colors (RGBA), mono preview (take downmix), re-preview track selection, Sequential item pick.]]></changelog>
         <source main="main">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/QikWhoosh.lua</source>
       </version>
     </reapack>
@@ -66,8 +66,8 @@
         <description>Turns a REAPER audio item into a haptic feedback curve and exports it for Unreal (CSV), Unity (AnimationCurve JSON) or Godot 4 (.tres)</description>
         <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
       </metadata>
-      <version name="1.0.0" author="Ed" time="2026-10-27T00:00:00Z">
-        <changelog><![CDATA[Initial release]]></changelog>
+      <version name="1.0.1" author="Ed" time="2026-11-16T20:00:00Z">
+        <changelog><![CDATA[Godot 4 .tres export now uses the real Curve format. Cancel in save dialog no longer re-prompts.]]></changelog>
         <source main="main">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/CurveGenerator.lua</source>
       </version>
     </reapack>
@@ -76,8 +76,8 @@
         <description>Superseded by ReaBlender. Turns the selected track into a multiband host folder: items are cloned into color-coded [LOW]/[MID]/[HIGH] bucket children split by phase-coherent Linkwitz-Riley 4th-order (24 dB/oct) JSFX filters, summing flat into the parent (which keeps your FX chain plus an output visualizer). Re-run on the rig to open a control window with live crossover sliders. Values persist on the parent track.</description>
         <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
       </metadata>
-      <version name="1.2.1" author="Ed" time="2026-10-28T01:50:00Z">
-        <changelog><![CDATA[CRITICAL FIX: TrackFX_SetParam takes native values (Hz), not normalized 0..1 — all cutoff writes were clamping to the slider minimums and band modes were mis-set. Apply now sends Hz directly; existing rigs should re-Apply or be recreated.]]></changelog>
+      <version name="1.2.2" author="Ed" time="2026-11-16T20:00:00Z">
+        <changelog><![CDATA[Fix MIDI detection (GetMediaSourceType returns a string) and docked window closing.]]></changelog>
         <source main="main">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/Create_Or_Sync_Multiband_Rig.lua</source>
       </version>
     </reapack>
@@ -86,8 +86,8 @@
         <description>Per-track Linkwitz-Riley 4th-order (24 dB/oct) band filter for multiband splitting: Low (LP), Mid (BP) or High (HP) mode with two crossover sliders. Installs to Effects/SoundDesignTools/ for the Create_Or_Sync_Multiband_Rig.lua script.</description>
         <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
       </metadata>
-      <version name="1.1.0" author="Ed" time="2026-10-28T00:45:00Z">
-        <changelog><![CDATA[Added gmem band-level meter output for MB_Visualizer.jsfx.]]></changelog>
+      <version name="1.1.1" author="Ed" time="2026-11-16T20:00:00Z">
+        <changelog><![CDATA[Republish so ReaPack refreshes installed copies.]]></changelog>
         <source main="main" file="SoundDesignTools/MB_Filter_Band.jsfx">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/MB_Filter_Band.jsfx</source>
       </version>
     </reapack>
@@ -96,8 +96,8 @@
         <description>Passthrough JSFX for the [MB Rig] parent folder: scrolling peak scope of the summed band output plus navy/amber/cyan level meters fed by the MB_Filter_Band instances via shared gmem.</description>
         <link rel="website">https://github.com/Edvvrdd/ReaperTools</link>
       </metadata>
-      <version name="1.0.0" author="Ed" time="2026-10-28T00:45:00Z">
-        <changelog><![CDATA[Initial release]]></changelog>
+      <version name="1.0.1" author="Ed" time="2026-11-16T20:00:00Z">
+        <changelog><![CDATA[Fix scope buffer and band-meter decay sharing the same memory.]]></changelog>
         <source main="main" file="SoundDesignTools/MB_Visualizer.jsfx">https://raw.githubusercontent.com/Edvvrdd/ReaperTools/main/MB_Visualizer.jsfx</source>
       </version>
     </reapack>

@@ -1,6 +1,6 @@
 -- @description Create_Or_Sync_Multiband_Rig
 -- @author Ed
--- @version 1.2.1
+-- @version 1.2.2
 -- @provides [main] .
 -- @about
 --   # Multiband Splitting Rig — LR4 band-split folder (Multipass-style)
