@@ -1214,7 +1214,7 @@ local function draw_curve()
   local pk_lvl = (state.peak_db - (-24)) / 24 -- -24 dB -> 0, 0 dB -> 1
   local dot_x, dot_y = tx(state.peak_pos), mid - half * pk_lvl
   r.ImGui_DrawList_AddCircleFilled(dl, dot_x, dot_y, 8, 0xFF2D6D8C)
-  r.ImGui_DrawList_AddCircle(dl, dot_x, dot_y, 10, 0x2D6D8C88, 1.5)
+  r.ImGui_DrawList_AddCircle(dl, dot_x, dot_y, 10, 0x2D6D8C88, 0, 1.5)
   if clicked and math.abs(mx - dot_x) < 12 and math.abs(my - dot_y) < 12 then
     peak_dragging = true
   end
